@@ -69,7 +69,7 @@ class Handler(BaseHTTPRequestHandler):
                 "outdir": str(DEFAULT_OUT),
                 "formats": [{"id": fid, "label": f["label"], "kind": f["kind"]}
                             for fid, f in FORMAT_MAP.items()],
-                "cookies": [{"id": c, "label": l} for c, l in COOKIE_BROWSERS],
+                "cookies": [{"id": cid, "label": label} for label, cid in COOKIE_BROWSERS],
                 "has_ffmpeg": bool(FFMPEG_PATH),
                 "ytdlp_version": core.ytdlp_version(),
             })

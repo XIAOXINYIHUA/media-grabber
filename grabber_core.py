@@ -134,12 +134,12 @@ HISTORY = []
 
 
 def load_history():
-    global HISTORY
+    # 原地更新（不重绑定）：from ... import HISTORY 的调用方持有同一 list 对象
     if HISTORY_FILE.exists():
         try:
-            HISTORY = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+            HISTORY[:] = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
         except Exception:
-            HISTORY = []
+            HISTORY[:] = []
 
 
 def save_history():
