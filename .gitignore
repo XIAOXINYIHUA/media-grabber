@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# 构建产物（exe 通过 GitHub Releases 分发，不入库）
+build/
+dist/
+*.spec
+*.exe
+
+# 运行时产生的用户数据（隐私）
+downloads/
+history.json
+settings.json
+
+# 日志与临时文件
+*.log
+selftest.log
+server.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# 本地配置
+.env
+.safe-publish-baseline.json

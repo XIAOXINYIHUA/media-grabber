@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediaGrabber 2.0 · 影音爬取工具</title>
+<style>
+  :root {
+    --bg: #0d0f14; --card: #161a23; --card2: #1c2130; --line: #262c3d;
+    --text: #e8ecf4; --dim: #8b93a7; --accent: #7c5cff; --accent2: #2dd4bf;
+    --danger: #ff5c7a; --ok: #34d399; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(1200px 500px at 70% -10%, #1b1630 0%, var(--bg) 55%) fixed;
+    color: var(--text);
+    font-family: "Segoe UI", "Microsoft JhengHei", "Microsoft YaHei", system-ui, sans-serif;
+    min-height: 100vh;
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 24px 18px 60px; }
+
+  header { display: flex; align-items: center; justify-content: space-between;
+           max-width: 920px; margin: 0 auto; padding: 26px 18px 6px; }
+  .logo { display: flex; align-items: center; gap: 14px; }
+  h1 { font-size: 24px; letter-spacing: .5px;
+       background: linear-gradient(90deg, #a78bfa, #2dd4bf);
+       -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--dim); font-size: 12.5px; margin-top: 3px; }
+  .eq { display: flex; align-items: flex-end; gap: 3px; height: 34px; padding: 4px 6px;
+        background: linear-gradient(135deg, rgba(124,92,255,.18), rgba(45,212,191,.14));
+        border: 1px solid var(--line); border-radius: 10px; }
+  .eq span { width: 4px; border-radius: 2px;
+             background: linear-gradient(180deg, #a78bfa, #2dd4bf); animation: eq 1s ease-in-out infinite; }
+  .eq span:nth-child(1){ height: 40%; animation-delay: 0s; }
+  .eq span:nth-child(2){ height: 90%; animation-delay: .15s; }
+  .eq span:nth-child(3){ height: 60%; animation-delay: .3s; }
+  .eq span:nth-child(4){ height: 80%; animation-delay: .45s; }
+  .eq span:nth-child(5){ height: 30%; animation-delay: .6s; }
+  @keyframes eq { 0%,100%{ transform: scaleY(.5);} 50%{ transform: scaleY(1);} }
+  .env { font-size: 12px; color: var(--dim); text-align: right; line-height: 1.7; }
+  .env b { color: var(--ok); font-weight: 600; }
+  .env b.bad { color: var(--danger); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+          padding: 20px; margin-top: 18px; }
+  .card h2 { font-size: 15px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card h2::before { content: ""; width: 4px; height: 15px; border-radius: 2px;
+                     background: linear-gradient(180deg, var(--accent), var(--accent2)); }
+  label { font-size: 12.5px; color: var(--dim); display: block; margin-bottom: 7px; }
+  textarea, input[type=text], select {
+    width: 100%; background: var(--card2); border: 1px solid var(--line); border-radius: 10px;
+    color: var(--text); padding: 11px 13px; font-size: 13.5px; outline: none;
+    font-family: inherit; transition: border-color .15s;
+  }
+  textarea:focus, input[type=text]:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; line-height: 1.65; }
+  select { width: auto; cursor: pointer; }
+  .row { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; align-items: flex-end; }
+  .field.grow { flex: 1; min-width: 260px; }
+
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { padding: 8px 15px; border-radius: 999px; border: 1px solid var(--line);
+          background: var(--card2); color: var(--dim); font-size: 13px; cursor: pointer;
+          transition: all .15s; user-select: none; }
+  .pill:hover { border-color: var(--accent); color: var(--text); }
+  .pill.on { background: linear-gradient(135deg, var(--accent), #6366f1);
+             border-color: transparent; color: #fff; font-weight: 600;
+             box-shadow: 0 3px 14px rgba(124,92,255,.35); }
+  .pill.kind { border-color: transparent; background: #10131a; }
+  .pill.kind.on { background: linear-gradient(135deg, #0ea5e9, #2dd4bf);
+                  box-shadow: 0 3px 14px rgba(45,212,191,.3); }
+
+  button { font-family: inherit; cursor: pointer; border: none; border-radius: 10px;
+           font-size: 13.5px; transition: all .15s; }
+  .primary { background: linear-gradient(135deg, var(--accent), #6366f1); color: #fff;
+             padding: 11px 26px; font-weight: 600; box-shadow: 0 3px 14px rgba(124,92,255,.3); }
+  .primary:hover { filter: brightness(1.12); }
+  .primary:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+  .ghost { background: var(--card2); color: var(--text); border: 1px solid var(--line);
+           padding: 11px 20px; }
+  .ghost:hover { border-color: var(--accent); }
+  .ghost:disabled { opacity: .4; cursor: wait; }
+  .mini { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
+
+  .hint { font-size: 12px; color: var(--warn); margin-top: 10px; display: none; }
+  .hint.show { display: block; }
+
+  /* 資訊卡片 */
+  .info { display: none; margin-top: 18px; background: var(--card2);
+          border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+          gap: 16px; align-items: center; }
+  .info.show { display: flex; }
+  .info img { width: 132px; height: 84px; object-fit: cover; border-radius: 8px;
+              background: #0a0c10; flex-shrink: 0; }
+  .info .t { font-size: 14.5px; font-weight: 600; line-height: 1.45;
+             display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .info .m { color: var(--dim); font-size: 12.5px; margin-top: 6px; }
+
+  /* 任務 */
+  .task { background: var(--card2); border: 1px solid var(--line); border-radius: 12px;
+          padding: 14px 16px; margin-bottom: 10px; }
+  .task-top { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  .task-name { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis;
+               white-space: nowrap; flex: 1; }
+  .chip { font-size: 11.5px; padding: 3px 10px; border-radius: 999px; flex-shrink: 0; font-weight: 600; }
+  .chip.排隊中 { background: #2a3040; color: var(--dim); }
+  .chip.下載中 { background: rgba(96,165,250,.15); color: #7db4ff; animation: pulse 1.4s infinite; }
+  .chip.處理中 { background: rgba(251,191,36,.14); color: var(--warn); }
+  .chip.完成   { background: rgba(52,211,153,.14); color: var(--ok); }
+  .chip.失敗   { background: rgba(255,92,122,.14); color: var(--danger); }
+  .chip.已取消 { background: #2a3040; color: var(--dim); }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .bar { height: 7px; background: #10131a; border-radius: 4px; margin: 12px 0 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; border-radius: 4px;
+           background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s; }
+  .task-meta { display: flex; justify-content: space-between; color: var(--dim); font-size: 12px; }
+  .task-err { color: var(--danger); font-size: 12.5px; margin-top: 8px; word-break: break-all; }
+  .task-files { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .file { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+          background: #10131a; border-radius: 8px; padding: 7px 11px; font-size: 12.5px; }
+  .file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty { color: var(--dim); font-size: 13px; text-align: center; padding: 22px 0; }
+
+  /* 歷史 */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--dim); font-weight: 500; font-size: 12px;
+       padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 10px; border-bottom: 1px solid rgba(38,44,61,.5); }
+  tr:hover td { background: rgba(124,92,255,.05); }
+  td.t-act { text-align: right; white-space: nowrap; }
+  .h2row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .h2row h2 { margin-bottom: 0; }
+
+  footer { text-align: center; color: var(--dim); font-size: 12px; margin-top: 26px; }
+
+  /* toast */
+  #toast { position: fixed; top: 22px; left: 50%; transform: translateX(-50%) translateY(-8px);
+           background: var(--card2); border: 1px solid var(--line); color: var(--text);
+           padding: 10px 20px; border-radius: 10px; font-size: 13.5px; opacity: 0;
+           transition: all .25s; pointer-events: none; z-index: 99; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.err { border-color: var(--danger); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="eq"><span></span><span></span><span></span><span></span><span></span></div>
+    <div><h1>MediaGrabber</h1><div class="sub" id="sub">影音爬取工具 · 基於 yt-dlp</div></div>
+  </div>
+  <div class="env" id="env"></div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>影片連結</h2>
+    <label for="urls">每行一個，支持 B 站 / YouTube / 抖音等（播放清單會自動逐個下載）</label>
+    <textarea id="urls" rows="4" placeholder="https://www.bilibili.com/video/BV1TL4y1h7AV/"></textarea>
+
+    <div class="row">
+      <div class="field">
+        <label>下載類型</label>
+        <div class="pills" id="kind-pills"></div>
+      </div>
+      <div class="field">
+        <label for="cookie">瀏覽器 Cookie（下載會員內容時選）</label>
+        <select id="cookie"></select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="field">
+        <label>輸出格式</label>
+        <div class="pills" id="pills"></div>
+      </div>
+    </div>
+    <div class="hint" id="fmt-hint">⚠ 未偵測到 ffmpeg：影片功能不可用，音頻僅「原始音質」可用。</div>
+
+    <div class="row">
+      <div class="field grow">
+        <label for="outdir">保存目錄</label>
+        <input type="text" id="outdir">
+      </div>
+      <div class="field" style="display:flex; gap:10px;">
+        <button class="ghost" id="btn-info">獲取資訊</button>
+        <button class="primary" id="btn-dl">開始下載</button>
+      </div>
+    </div>
+
+    <div class="info" id="info">
+      <img id="info-img" alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">
+      <div style="min-width:0">
+        <div class="t" id="info-title"></div>
+        <div class="m" id="info-meta"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>下載隊列</h2>
+    <div id="tasks"><div class="empty">暫無任務，貼上連結開始吧 🎵🎬</div></div>
+  </section>
+
+  <section class="card">
+    <div class="h2row">
+      <h2>下載記錄</h2>
+      <button class="ghost mini" id="btn-clear">清空記錄</button>
+    </div>
+    <div id="history-box"><div class="empty">還沒有下載記錄</div></div>
+  </section>
+
+  <footer>僅供個人學習使用，請尊重版權 · MediaGrabber <span id="ver"></span></footer>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtSize = n => n >= 1048576 ? (n/1048576).toFixed(1)+' MB' : n >= 1024 ? (n/1024).toFixed(0)+' KB' : n+' B';
+
+let CFG = { formats: [], cookies: [], has_ffmpeg: true, outdir: "" };
+let curKind = "audio";
+let curFmt = "mp3";
+let lastFinishedCount = -1;
+
+function toast(msg, isErr=false) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.className = "show" + (isErr ? " err" : "");
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.className = "", 2600);
+}
+
+async function api(path, body) {
+  const opt = body !== undefined
+    ? { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) }
+    : {};
+  const r = await fetch(path, opt);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || ("HTTP " + r.status));
+  return data;
+}
+
+function urls() {
+  return $("#urls").value.split("\n").map(s => s.trim()).filter(Boolean);
+}
+function cookieVal() {
+  const v = $("#cookie").value;
+  return v === "none" ? "" : v;
+}
+function fmtInfo() { return CFG.formats.find(f => f.id === curFmt) || {}; }
+function needsFfmpeg() { const f = fmtInfo(); return f.kind === "video" || f.id !== "abest"; }
+
+/* ---------- 初始化 ---------- */
+async function init() {
+  try {
+    CFG = await api("/api/config");
+  } catch (e) { toast("加載配置失敗: " + e.message, true); return; }
+
+  $("#sub").textContent = "影音爬取工具 v" + CFG.version + " · 基於 yt-dlp";
+  $("#ver").textContent = "v" + CFG.version;
+  $("#env").innerHTML =
+    `yt-dlp ${esc(CFG.ytdlp_version)}<br>ffmpeg ${CFG.has_ffmpeg ? "<b>✓ 已就緒</b>" : '<b class="bad">✗ 未找到</b>'}`;
+
+  $("#kind-pills").innerHTML = "";
+  [["audio", "🎵 音頻"], ["video", "🎬 視頻"]].forEach(([k, label]) => {
+    const d = document.createElement("div");
+    d.className = "pill kind" + (k === curKind ? " on" : "");
+    d.textContent = label;
+    d.dataset.kind = k;
+    d.onclick = () => {
+      curKind = k;
+      document.querySelectorAll("#kind-pills .pill").forEach(p => p.classList.toggle("on", p.dataset.kind === k));
+      renderFmtPills();
+    };
+    $("#kind-pills").appendChild(d);
+  });
+
+  $("#cookie").innerHTML = CFG.cookies
+    .map(c => `<option value="${c.id}">${esc(c.label)}</option>`).join("");
+
+  const saved = localStorage.getItem("ag-outdir");
+  $("#outdir").value = saved || CFG.outdir;
+  $("#outdir").onchange = () => localStorage.setItem("ag-outdir", $("#outdir").value);
+
+  if (!CFG.has_ffmpeg) $("#fmt-hint").classList.add("show");
+  renderFmtPills();
+  refreshHistory();
+  poll();
+  setInterval(poll, 1100);
+}
+
+function renderFmtPills() {
+  const list = CFG.formats.filter(f => f.kind === curKind);
+  if (!list.some(f => f.id === curFmt)) curFmt = list[0].id;
+  $("#pills").innerHTML = "";
+  list.forEach(f => {
+    const d = document.createElement("div");
+    d.className = "pill" + (f.id === curFmt ? " on" : "");
+    d.textContent = f.label;
+    d.dataset.id = f.id;
+    d.onclick = () => {
+      document.querySelectorAll("#pills .pill").forEach(p => p.classList.remove("on"));
+      d.classList.add("on");
+      curFmt = f.id;
+    };
+    $("#pills").appendChild(d);
+  });
+}
+
+/* ---------- 獲取資訊 ---------- */
+$("#btn-info").onclick = async () => {
+  const list = urls();
+  if (!list.length) return toast("請先貼上影片連結", true);
+  const btn = $("#btn-info");
+  btn.disabled = true; btn.textContent = "獲取中…";
+  try {
+    const info = await api("/api/info", { url: list[0], cookie: cookieVal() });
+    $("#info-img").style.visibility = "hidden";
+    if (info.thumbnail) { $("#info-img").src = info.thumbnail; $("#info-img").style.visibility = "visible"; }
+    $("#info-title").textContent = info.title || "(未知標題)";
+    const bits = [];
+    if (info.uploader) bits.push("UP主: " + info.uploader);
+    if (info.duration_string) bits.push("時長: " + info.duration_string);
+    if (info.resolution) bits.push("解析度: " + info.resolution);
+    if (info.is_playlist) bits.push(`🎵 播放清單，共 ${info.n_entries} 個影片`);
+    $("#info-meta").textContent = bits.join(" · ") || "";
+    $("#info").classList.add("show");
+  } catch (e) {
+    $("#info").classList.remove("show");
+    toast("獲取失敗: " + e.message, true);
+  }
+  btn.disabled = false; btn.textContent = "獲取資訊";
+};
+
+/* ---------- 開始下載 ---------- */
+$("#btn-dl").onclick = async () => {
+  const list = urls();
+  if (!list.length) return toast("請先貼上影片連結", true);
+  if (!CFG.has_ffmpeg && needsFfmpeg()) {
+    const f = fmtInfo();
+    return toast(f.kind === "video" ? "未偵測到 ffmpeg，影片功能不可用" : "未偵測到 ffmpeg，請選「原始音質」", true);
+  }
+  $("#btn-dl").disabled = true;
+  try {
+    await api("/api/download", {
+      urls: list, format: curFmt,
+      outdir: $("#outdir").value.trim(), cookie: cookieVal(),
+    });
+    toast(`已加入隊列（${list.length} 個連結）`);
+    poll();
+  } catch (e) { toast(e.message, true); }
+  $("#btn-dl").disabled = false;
+};
+
+/* ---------- 任務輪詢 ---------- */
+async function poll() {
+  try {
+    const { tasks } = await api("/api/status");
+    renderTasks(tasks);
+    const fin = tasks.filter(t => ["完成","失敗","已取消"].includes(t.status)).length;
+    if (lastFinishedCount >= 0 && fin > lastFinishedCount) refreshHistory();
+    lastFinishedCount = fin;
+  } catch (e) { /* 靜默 */ }
+}
+
+function renderTasks(tasks) {
+  const box = $("#tasks");
+  if (!tasks.length) {
+    box.innerHTML = '<div class="empty">暫無任務，貼上連結開始吧 🎵🎬</div>';
+    return;
+  }
+  box.innerHTML = tasks.map(t => {
+    const active = ["排隊中","下載中","處理中"].includes(t.status);
+    const name = esc(t.current_file || t.urls[0]);
+    const meta = [];
+    if (t.item_note) meta.push(esc(t.item_note));
+    if (t.speed) meta.push(esc(t.speed));
+    if (t.eta && t.status === "下載中") meta.push("剩餘 " + esc(t.eta));
+    const files = (t.files || []).map(f =>
+      `<div class="file"><span title="${esc(f)}">${f.match(/\.(mp4|mkv|webm)$/i) ? "🎬" : "🎧"} ${esc(f.split(/[\\/]/).pop())}</span>
+       <button class="ghost mini" data-open="${esc(f)}">📂 打開位置</button></div>`).join("");
+    return `<div class="task">
+      <div class="task-top">
+        <div class="task-name" title="${esc(t.urls.join('\n'))}">${name}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="chip ${t.status}">${t.status}${t.has_warning ? ' (有警告)' : ''}</span>
+          ${active ? `<button class="ghost mini" data-cancel="${t.id}">取消</button>` : ""}
+        </div>
+      </div>
+      ${active ? `<div class="bar"><i style="width:${t.percent || 0}%"></i></div>
+      <div class="task-meta"><span>${t.percent ? t.percent.toFixed(1) + "%" : ""}</span>
+      <span>${meta.join(" · ")}</span></div>` : ""}
+      ${t.error ? `<div class="task-err">${esc(t.error)}</div>` : ""}
+      ${files ? `<div class="task-files">${files}</div>` : ""}
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-cancel]").forEach(b => b.onclick = async () => {
+    await api("/api/cancel", { id: b.dataset.cancel }).catch(() => {});
+  });
+  box.querySelectorAll("[data-open]").forEach(b => b.onclick = async () => {
+    await api("/api/open", { path: b.dataset.open }).catch(e => toast(e.message, true));
+  });
+}
+
+/* ---------- 歷史 ---------- */
+async function refreshHistory() {
+  try {
+    const { history } = await api("/api/history");
+    const box = $("#history-box");
+    if (!history.length) {
+      box.innerHTML = '<div class="empty">還沒有下載記錄</div>';
+      return;
+    }
+    box.innerHTML = `<table><thead><tr><th style="width:110px">時間</th><th>文件</th>
+      <th style="width:60px">大小</th><th style="width:90px">操作</th></tr></thead><tbody>` +
+      history.map(h => `<tr>
+        <td style="color:var(--dim)">${esc(h.time)}</td>
+        <td title="${esc(h.filepath)}">${h.kind === "video" ? "🎬" : "🎧"} ${esc(h.title)}</td>
+        <td style="color:var(--dim)">${fmtSize(h.size)}</td>
+        <td class="t-act"><button class="ghost mini" data-open="${esc(h.filepath)}">📂 打開</button></td>
+      </tr>`).join("") + "</tbody></table>";
+    box.querySelectorAll("[data-open]").forEach(b => b.onclick = async () => {
+      await api("/api/open", { path: b.dataset.open }).catch(e => toast(e.message, true));
+    });
+  } catch (e) { /* 靜默 */ }
+}
+
+$("#btn-clear").onclick = async () => {
+  await api("/api/history/clear", {}).catch(() => {});
+  refreshHistory();
+  toast("記錄已清空");
+};
+
+init();
+</script>
+</body>
+</html>
